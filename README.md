@@ -15,20 +15,25 @@
 
 ## Yêu cầu
 
-- Python 3.x
-
-Các thư viện phụ thuộc được liệt kê trong file `requirements.txt`.
+- Python 3.7+ (được định nghĩa trong `pyproject.toml`)
 
 ## Hướng dẫn cài đặt và sử dụng
 
-1. Cài đặt các thư viện cần thiết:
+Dự án này được đóng gói để có thể cài đặt như một công cụ dòng lệnh.
+
+1. **Cài đặt dự án:**
+
+   Mở terminal ở thư mục gốc và chạy lệnh sau. Lệnh này sẽ cài đặt gói ở chế độ "editable" (có thể chỉnh sửa), đồng thời tự động cài đặt các thư viện phụ thuộc:
+
     ```bash
-    pip install -r requirements.txt
+    pip install -e .
     ```
 
-2. Chạy chương trình:
+2. **Chạy chương trình:**
+
+   Sau khi cài đặt thành công, bạn có thể gọi trực tiếp công cụ từ bất kỳ đâu bằng lệnh:
     ```bash
-    python -m main
+    caesar
     ```
 
 3. Làm theo hướng dẫn trên màn hình để mã hóa hoặc giải mã văn bản.
