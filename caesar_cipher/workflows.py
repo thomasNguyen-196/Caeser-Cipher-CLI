@@ -4,9 +4,23 @@ Application workflows that orchestrate the UI and cipher logic.
 
 import sys
 import time
+from typing import Optional
 from . import ui
 from . import cipher
 from . import analysis
+
+def _strip_saved_header(text: str) -> str:
+    """
+    Removes the single-line header we add when saving (e.g., 'Ciphertext — Key: 3')
+    so reusing a saved file won't accidentally encrypt/decrypt the header.
+    """
+    lines = text.splitlines()
+    if lines and "key:" in lines[0].lower():
+        # Drop header line and any immediate blank lines after it.
+        lines = lines[1:]
+        while lines and not lines[0].strip():
+            lines = lines[1:]
+    return "\n".join(lines)
 
 def _read_text_input(label: str) -> str:
     """
@@ -17,7 +31,7 @@ def _read_text_input(label: str) -> str:
     """
     if not sys.stdin.isatty():
         data = sys.stdin.read()
-        return data.rstrip("\n")
+        return _strip_saved_header(data.rstrip("\n"))
 
     print(ui.FG["yellow"] + "Văn bản dài (trên ~1k ký tự) nên nhập qua file để tránh bị cắt." + ui.RESET)
     mode = ui.prompt("Chọn nhập trực tiếp [Enter] hoặc gõ 'f' để đọc từ file: ").strip().lower()
@@ -26,7 +40,7 @@ def _read_text_input(label: str) -> str:
             path = ui.prompt("Đường dẫn file: ").strip()
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    return f.read()
+                    return _strip_saved_header(f.read())
             except Exception as e:
                 print(ui.FG["red"] + f"Lỗi đọc file: {e}" + ui.RESET)
                 retry = ui.prompt("Thử lại? (y/n): ").strip().lower()
@@ -48,7 +62,7 @@ def encrypt_flow():
         print(ui.FG["red"] + "Key phải là số nguyên. Thử lại." + ui.RESET)
     ciphertext = cipher.caesar_encrypt(plaintext, key)
     ui.boxed("KẾT QUẢ", ciphertext)
-    post_output_actions(ciphertext)
+    post_output_actions(ciphertext, key=key, label="Ciphertext")
 
 def decrypt_flow():
     """Workflow for decrypting a message."""
@@ -64,7 +78,7 @@ def decrypt_flow():
         print(ui.FG["red"] + "Key phải là số nguyên. Thử lại." + ui.RESET)
     plaintext = cipher.caesar_decrypt(ciphertext, key)
     ui.boxed("KẾT QUẢ", plaintext)
-    post_output_actions(plaintext)
+    post_output_actions(plaintext, key=key, label="Plaintext")
 
 def brute_flow():
     """Workflow for brute-forcing a ciphertext."""
@@ -103,14 +117,17 @@ def brute_flow():
             if 1 <= n <= len(results):
                 score, key, dec = results[n-1]
                 ui.boxed(f"Key {key} (score={score})", dec)
-                post_output_actions(dec)
+                post_output_actions(dec, key=key, label=f"Brute-force result (score={score})")
             else:
                 print(ui.FG["red"] + "Số không hợp lệ." + ui.RESET)
         else:
             print(ui.FG["yellow"] + "Lệnh không hiểu. Nhập số, 'a' hoặc 'q'." + ui.RESET)
 
-def post_output_actions(text: str):
-    """Handles actions after a result is generated (copy, save, etc.)."""
+def post_output_actions(text: str, key: Optional[int] = None, label: str = ""):
+    """
+    Handles actions after a result is generated (copy, save, etc.).
+    When saving to file, the key (if provided) is written alongside the output.
+    """
     print()
     print(ui.FG["cyan"] + "[1] Copy vào clipboard (nếu có pyperclip)   [2] Lưu vào file   [Enter] Quay lại" + ui.RESET)
     cmd = ui.prompt("Chọn: ").strip()
@@ -125,9 +142,17 @@ def post_output_actions(text: str):
             print(ui.FG["yellow"] + "pyperclip không cài, không thể copy. Bạn có thể pip install pyperclip." + ui.RESET)
     elif cmd == "2":
         fname = ui.prompt("Tên file lưu (mặc định output.txt): ").strip() or "output.txt"
+        content = text
+        if key is not None:
+            header_parts = []
+            if label:
+                header_parts.append(label)
+            header_parts.append(f"Key: {key}")
+            header = " — ".join(header_parts)
+            content = f"{header}\n\n{text}"
         try:
             with open(fname, "w", encoding="utf-8") as f:
-                f.write(text)
+                f.write(content)
             print(ui.FG["green"] + f"Đã lưu vào {fname}" + ui.RESET)
         except Exception as e:
             print(ui.FG["red"] + f"Lưu thất bại: {e}" + ui.RESET)
