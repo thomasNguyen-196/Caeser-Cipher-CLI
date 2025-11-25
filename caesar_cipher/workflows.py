@@ -2,17 +2,44 @@
 Application workflows that orchestrate the UI and cipher logic.
 """
 
+import sys
 import time
 from . import ui
 from . import cipher
 from . import analysis
+
+def _read_text_input(label: str) -> str:
+    """
+    Reads potentially large text either from stdin (if piped), a file, or direct input.
+
+    Direct terminal input is limited by the terminal's line buffer (~1k chars per line
+    in canonical mode). Offering a file/piped option avoids paste truncation.
+    """
+    if not sys.stdin.isatty():
+        data = sys.stdin.read()
+        return data.rstrip("\n")
+
+    print(ui.FG["yellow"] + "Văn bản dài (trên ~1k ký tự) nên nhập qua file để tránh bị cắt." + ui.RESET)
+    mode = ui.prompt("Chọn nhập trực tiếp [Enter] hoặc gõ 'f' để đọc từ file: ").strip().lower()
+    if mode == "f":
+        while True:
+            path = ui.prompt("Đường dẫn file: ").strip()
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                print(ui.FG["red"] + f"Lỗi đọc file: {e}" + ui.RESET)
+                retry = ui.prompt("Thử lại? (y/n): ").strip().lower()
+                if retry != "y":
+                    return ""
+    return ui.prompt(f"{label}: ")
 
 def encrypt_flow():
     """Workflow for encrypting a message."""
     ui.clear()
     ui.banner()
     ui.boxed("ENCRYPT", "Nhập văn bản cần mã hóa và khóa (số nguyên).")
-    plaintext = ui.prompt("Plaintext: ")
+    plaintext = _read_text_input("Plaintext")
     while True:
         key_s = ui.prompt("Key (integer, can be negative): ").strip()
         if key_s.lstrip("-").isdigit():
@@ -28,7 +55,7 @@ def decrypt_flow():
     ui.clear()
     ui.banner()
     ui.boxed("DECRYPT", "Nhập ciphertext và khóa (số nguyên).")
-    ciphertext = ui.prompt("Ciphertext: ")
+    ciphertext = _read_text_input("Ciphertext")
     while True:
         key_s = ui.prompt("Key (integer): ").strip()
         if key_s.lstrip("-").isdigit():
@@ -44,7 +71,7 @@ def brute_flow():
     ui.clear()
     ui.banner()
     ui.boxed("BRUTE-FORCE", "Thử tất cả khóa 1..25 và xếp theo gợi ý (score). Chọn dòng để xem chi tiết.")
-    ciphertext = ui.prompt("Ciphertext to brute-force: ")
+    ciphertext = _read_text_input("Ciphertext to brute-force")
     spinner = ui.Spinner("Brute-forcing")
     spinner.start()
     results = []
@@ -135,6 +162,7 @@ def show_help():
     help_text = (
         "Hướng dẫn ngắn:\n"
         "- Mã hóa/giải mã với khóa nguyên.\n"
+        "- Văn bản dài có thể đọc từ file (chọn 'f') hoặc pipe: cat file.txt | caesar\n"
         "- Brute-force sẽ thử các khóa 1..25 và gợi ý bằng heuristic (common words + freq).\n"
         "- Sau khi có kết quả, bạn có thể copy hoặc lưu file.\n"
         "- Nếu muốn giao diện xịn hơn: pip install pyfiglet colorama pyperclip\n"
