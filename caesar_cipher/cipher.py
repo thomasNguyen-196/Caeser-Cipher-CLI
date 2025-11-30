@@ -15,7 +15,7 @@ def caesar_encrypt(plaintext: str, key: int) -> str:
     for char in plaintext:
         if char.isalpha():
             shift = 65 if char.isupper() else 97
-            result.append(chr((ord(char) - shift + key) % 26 + shift))
+            result.append(chr((ord(char) - shift + key) % 26 + shift)) # chuyển chữ cái về 0–25 --> dịch chuyển theo Caesar --> đảm bảo vòng 0–25 --> trả về mã ASCII gốc để convert thành ký tự
         else:
             result.append(char)
     return "".join(result)
@@ -31,4 +31,4 @@ def caesar_decrypt(ciphertext: str, key: int) -> str:
     Returns:
         The decrypted string.
     """
-    return caesar_encrypt(ciphertext, -key)
+    return caesar_encrypt(ciphertext, -key) # Giải mã bằng cách dịch ngược lại với khóa đã cho
